@@ -1,5 +1,6 @@
 import {glPosFromClient, unpack} from "./webgl_utils";
-import {add, mult, subtract, Vec2} from "./interfaces";
+import {Vec2} from "./interfaces";
+import {Matrix4, Vector4} from "math.gl";
 
 interface Attributes {
     a_Position: number;
@@ -18,8 +19,9 @@ class Drawing {
     public attributes: Attributes;
     public program: WebGLProgram;
     private vertexBuffer: WebGLBuffer | null;
-    public transform = new Float32Array();
+    public transform = new Matrix4().identity();
     private dirty = false;
+    private scale = new Matrix4().identity()
 
     constructor(program: WebGLProgram) {
         this.gl_Points = new Array<Array<GLfloat>>();
@@ -42,7 +44,6 @@ class Drawing {
         let x = event.clientX;
         let y = event.clientY;
         let glPos = glPosFromClient(canvas, x, y);
-        // glPos = subtract(glPos, this.translation);
         glPos = this.getInv(glPos);
         this.gl_Points.push(new Array<GLfloat>(...[glPos.x, glPos.y, 0]));
         const norm = Math.sqrt(x * x + y * y);
@@ -50,13 +51,20 @@ class Drawing {
         this.renderBuffer(gl);
     }
 
-    public renderBuffer(gl: WebGLRenderingContext) {
-        // gl.clear(gl.COLOR_BUFFER_BIT);
+    public updateTransform(gl: WebGLRenderingContext) {
         gl.useProgram(this.program);
-        if (this.dirty) this.setTransformUniform(gl, this.program);
+        if (this.dirty) {
+            this.setTransformUniform(gl, this.program);
+            this.dirty = false;
+        }
+    }
+
+    public renderBuffer(gl: WebGLRenderingContext) {
+        gl.useProgram(this.program);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
         gl.vertexAttribPointer(this.attributes.a_Position, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.attributes.a_Position);
+        gl.uniform4f(this.attributes.u_FragColor, 1, 0.3, 0.6, 1);
         gl.lineWidth(5);
         this.setBuffer(gl);
         const shapeIndices = this.shapeIndices;
@@ -83,42 +91,38 @@ class Drawing {
         }
         const sin = Math.sin(this.angle);
         const cos = Math.cos(this.angle);
-        this.transform = new Float32Array([
-            cos ,    sin,       0, 0,
-            -sin,    cos,       0, 0,
-            0,       0,         1, 0,
-            this.translation.x, this.translation.y, 0, 1,
-        ])
-
-        gl.uniformMatrix4fv(u_Transform, false, this.transform);
+        this.transform = new Matrix4([
+            cos ,    -sin,       0,   this.translation.x,
+            sin,    cos,         0,   this.translation.y,
+            0,       0,          1,   0,
+            0,       0,          0,   1,
+        ]).multiplyRight(this.scale);
+        const copy_t = new Matrix4().copy(this.transform).transpose()
+        gl.uniformMatrix4fv(u_Transform, false, copy_t);
+        this.dirty = false;
     }
 
     private getInv(v: Vec2): Vec2 {
-        const sin = Math.sin(-this.angle);
-        const cos = Math.cos(-this.angle);
-        const invTransform = new Float32Array([
-            cos ,    sin,       0, 0,
-            -sin,     cos,       0, 0,
-            0,      0,     1, 0,
-            -this.translation.x, -this.translation.y, 0, 1,
-        ])
-        return mult(invTransform, v);
+        const inv = (new Matrix4().copy(this.transform)).invert().transpose();
+        let vec4 = new Vector4(v.x, v.y, 0, 1);
+        vec4 = vec4.transform(inv);
+        return {x: vec4[0], y: vec4[1]};
     }
 
     public dilate(canvas: HTMLCanvasElement, x: number, y: number, amount: number) {
         let inCanvas = glPosFromClient(canvas, x, y);
-        let gl_Points = this.gl_Points;
-        inCanvas = subtract(inCanvas, this.translation);
-        for (let i = 0; i < gl_Points.length; i++){
-            let v = gl_Points[i];
-            let vec = {x: v[0], y: v[1]};
-            vec = subtract(vec, inCanvas);
-            vec.x *= amount;
-            vec.y *= amount;
-            vec = add(vec, inCanvas);
-            gl_Points[i][0] = vec.x;
-            gl_Points[i][1] = vec.y;
-        }
+
+        const translation = new Matrix4([
+            1, 0, 0, -inCanvas.x,
+            0, 1, 0, -inCanvas.y,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+        ])
+        const scale = new Matrix4().identity().scale([amount, amount, amount, 1]);
+        const inv = new Matrix4().copy(translation).invert()
+        this.scale = this.scale.multiplyRight(inv.multiplyLeft(scale.multiplyLeft(translation)))
+        this.dirty = true;
+
     }
 
     public initVertexBuffers(gl: WebGLRenderingContext, program: WebGLProgram): number {

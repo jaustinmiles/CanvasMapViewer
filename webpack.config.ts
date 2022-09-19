@@ -3,6 +3,7 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const path = require("path");
 
 module.exports = {
+    mode: 'development',
     entry: './src/index.ts',
     module: {
         rules: [

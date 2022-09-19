@@ -4,7 +4,7 @@
   "description": "practice for webgl without threejs wrapper",
   "main": "index.js",
   "scripts": {
-    "dev": "webpack --watch & webpack serve --no-client-overlay",
+    "dev": "webpack --watch --mode development & webpack serve --no-client-overlay --mode development",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "John A. Miles",
@@ -19,5 +19,8 @@
     "webpack-cli": "^4.10.0",
     "webpack-dev-server": "^4.11.0",
     "write-file-webpack-plugin": "^4.5.1"
+  },
+  "dependencies": {
+    "math.gl": "^3.6.3"
   }
 }

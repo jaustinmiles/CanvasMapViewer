@@ -5,6 +5,7 @@ import fTexture from './shaders/fTextured.glsl'
 import Drawing from "./drawing";
 import setupHandlers from "./handlers";
 import Texture from "./texture";
+import {Matrix4} from "math.gl"
 
 
 function main() {
@@ -33,7 +34,10 @@ function main() {
 
     const render = () => {
         gl.clear(gl.COLOR_BUFFER_BIT)
-        texture?.draw(gl, drawing.transform);
+        drawing.updateTransform(gl);
+        let target = new Float32Array(16);
+        target = new Matrix4().copy(drawing.transform).transpose().toArray(target);
+        texture?.draw(gl, target);
         drawing?.renderBuffer(gl);
         requestAnimationFrame(render)
     }
@@ -79,6 +83,7 @@ function initializeDrawing(canvas: HTMLCanvasElement, gl: WebGLRenderingContext)
         console.log("failed to get uniform u_fragColor");
         return null;
     }
+    gl.uniform4f(u_FragColor, 1, 0.1, 0.4, 1);
     drawing.attributes.a_Position = a_Position;
     drawing.attributes.u_FragColor = u_FragColor;
     drawing.attributes.a_PointSize = a_PointSize;

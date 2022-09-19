@@ -64,7 +64,6 @@ function setupHandlers(canvas: HTMLCanvasElement, gl: WebGLRenderingContext, dra
         const dilation = event.deltaY < 0 ? 1.1 : 0.9;
 
         drawing.dilate(canvas, event.clientX, event.clientY, dilation);
-        texture.dilate(canvas, event.clientX, event.clientY, dilation);
         drawing.renderBuffer(gl);
     }
 

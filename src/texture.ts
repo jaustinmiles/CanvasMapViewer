@@ -125,8 +125,6 @@ class Texture {
     public dilate(canvas: HTMLCanvasElement, x: number, y: number, amount: number) {
         let inCanvas = glPosFromClient(canvas, x, y);
         for (let i = 0; i < this.coords.length; i++) {
-            console.log(this.coords.length);
-            console.log(i);
             let tex = {x: this.coords[i * 4], y: this.coords[i * 4 + 1]}
             tex = subtract(tex, inCanvas);
             tex.x *= amount;
@@ -135,7 +133,6 @@ class Texture {
             this.coords[i * 4] = tex.x;
             this.coords[i * 4 + 1] = tex.y;
         }
-        console.log(this.coords)
         this.dirty = true
     }
 
